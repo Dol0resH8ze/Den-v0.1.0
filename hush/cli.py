@@ -160,7 +160,8 @@ async def chat(args, name, invite=None):
             print(client.invite.encode())
         else:
             print("Join request sent. Waiting for owner approval.")
-        session = PromptSession(history=None, enable_history_search=False)
+        # Clear the submitted input line; command() prints the formatted message once.
+        session = PromptSession(history=None, enable_history_search=False, erase_when_done=True)
         with patch_stdout():
             printer = asyncio.create_task(events(client))
             closed = asyncio.create_task(client.closed.wait())
