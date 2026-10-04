@@ -1,0 +1,5 @@
+# Add to your own Tor configuration; do not replace unrelated configuration.
+# Hush connects to this loopback SOCKS5 endpoint.
+SocksPort 127.0.0.1:9050
+SafeSocks 1
+

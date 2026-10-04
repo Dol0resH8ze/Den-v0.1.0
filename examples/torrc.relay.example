@@ -1,0 +1,12 @@
+# EXAMPLE ONLY: replace the absolute path with a private, writable directory
+# owned by the OS account running Tor. Do not put Tor keys inside OneDrive,
+# a public web directory, source control, or a shared/synced folder.
+# Linux example:
+HiddenServiceDir /var/lib/tor/hush/
+HiddenServicePort 8765 127.0.0.1:8765
+
+# Windows: use a private directory under your local profile instead, e.g.
+# HiddenServiceDir C:/Users/YOUR_USER/AppData/Local/HushTor/onion/
+# Read the hostname file that Tor creates there to obtain the .onion address.
+# Start Hush with: hush relay --port 8765
+

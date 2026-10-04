@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hush-terminal"
+version = "0.1.0"
+description = "Experimental private, live terminal rooms over Tor"
+requires-python = ">=3.12"
+dependencies = ["PyNaCl==1.6.2", "python-socks[asyncio]==2.8.1", "prompt-toolkit==3.0.52"]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2", "pytest-asyncio==1.2.0"]
+
+[project.scripts]
+hush = "hush.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["hush*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
