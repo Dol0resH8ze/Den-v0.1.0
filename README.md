@@ -158,7 +158,12 @@ A device ID is its displayed fingerprint; a unique prefix also works. Compare
 fingerprints with your intended contacts through a trusted channel before
 approval. A familiar username alone does not identify a real person.
 
-The UI's `you (sent)` label means the message was submitted, not that every
+Chat lines look like `<Alice#1575b149>Hello!`, with a consistent color for each
+username and plain message text. Your own messages use the same format. The code
+is the first eight characters of the device fingerprint; `/members` shows the
+full fingerprint. Colors are derived from usernames consistently on every client.
+
+Your own displayed message means it was submitted, not that every
 participant received it. Messages racing a membership update can be dropped;
 there are no delivery receipts or automatic retries. Check `/members` and resend
 if a membership-change notice appears.

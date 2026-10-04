@@ -3,10 +3,13 @@
 import argparse
 import asyncio
 import contextlib
+import colorsys
 import getpass
+import hashlib
 import sys
 
-from prompt_toolkit import PromptSession
+from prompt_toolkit import PromptSession, print_formatted_text
+from prompt_toolkit.formatted_text import FormattedText, to_plain_text
 from prompt_toolkit.patch_stdout import patch_stdout
 from python_socks import ProxyError
 
@@ -26,6 +29,27 @@ HELP = """Type a message and press Enter to send.
   /quit                   Leave; owner leaving closes the room
 Use // at the start of a message to send a literal slash.
 """
+
+
+def user_label(name, code, *, full_code=False):
+    """Stable username color on every client; peer text is never parsed as markup."""
+    digest = hashlib.sha256(name.casefold().encode("utf-8")).digest()
+    hue = int.from_bytes(digest[:3], "big") / 0x1000000
+    red, green, blue = colorsys.hls_to_rgb(hue, 0.70, 0.75)
+    color = "#{:02x}{:02x}{:02x}".format(*(round(c * 255) for c in (red, green, blue)))
+    visible_code = safe_text(code) if full_code else safe_text(code)[:8]
+    return FormattedText([(f"fg:{color} bold", f"<{safe_text(name)}#{visible_code}>")])
+
+
+def print_styled(fragments):
+    if sys.stdout.isatty():
+        print_formatted_text(fragments)
+    else:
+        print(to_plain_text(fragments))
+
+
+def print_message(name, code, text):
+    print_styled(FormattedText([*user_label(name, code), ("", safe_text(text))]))
 
 
 def parser():
@@ -52,9 +76,13 @@ async def events(client):
         event = await client.events.get()
         kind = event["type"]
         if kind == "chat":
-            print(f"{event['name']} [{event['fingerprint'][:8]}]: {event['text']}")
+            print_message(event["name"], event["fingerprint"], event["text"])
         elif kind == "join_request":
-            print(f"\nJoin request: {event['name']} [{event['fingerprint']}]. Use /approve {event['fingerprint']}")
+            print_styled(FormattedText([
+                ("", "\nJoin request: "),
+                *user_label(event["name"], event["fingerprint"], full_code=True),
+                ("", f". Use /approve {event['fingerprint']}"),
+            ]))
         elif kind == "roster":
             if event["admitted"]:
                 print(f"Room: {event['count']} participant(s), {'locked' if event['locked'] else 'open to requests'}.")
@@ -72,7 +100,7 @@ async def command(client, line):
     if not line.startswith("/") or line.startswith("//"):
         text = line[1:] if line.startswith("//") else line
         await client.send_text(text)
-        print(f"you (sent): {safe_text(text)}")
+        print_message(client.name, fingerprint(client.identity.sign_key), text)
         return True
     name, _, arg = line.strip().partition(" ")
     arg = arg.strip()
@@ -85,13 +113,17 @@ async def command(client, line):
             print("Waiting for approval.")
         for key, nick in client.names.items():
             role = " owner" if key == client.invite.owner else ""
-            print(f"  {nick:24} {fingerprint(key)}{role}")
+            print_styled(FormattedText([
+                ("", "  "), *user_label(nick, fingerprint(key), full_code=True), ("", role),
+            ]))
     elif name == "/pending":
         client._owner_only()
         if not client.pending:
             print("No pending requests.")
         for key, pending in client.pending.items():
-            print(f"  {pending['name']:24} {fingerprint(key)}")
+            print_styled(FormattedText([
+                ("", "  "), *user_label(pending["name"], fingerprint(key), full_code=True),
+            ]))
     elif name in ("/approve", "/reject", "/kick"):
         if not arg:
             raise ValueError(f"Usage: {name} NAME_OR_DEVICE_ID")
@@ -119,7 +151,9 @@ async def chat(args, name, invite=None):
     client = (await RoomClient.create(name, args.server, args.port, **network)
               if args.command == "create" else await RoomClient.join(name, invite, **network))
     try:
-        print(f"Your session: {name} [{fingerprint(client.identity.sign_key)}]")
+        print_styled(FormattedText([
+            ("", "Your session: "), *user_label(name, fingerprint(client.identity.sign_key), full_code=True),
+        ]))
         print("Fresh device identity for this room. /help lists commands; /quit leaves.")
         if client.is_owner:
             print("Room created. Secret invite — share privately:")
@@ -132,7 +166,8 @@ async def chat(args, name, invite=None):
             closed = asyncio.create_task(client.closed.wait())
             try:
                 while not client.closed.is_set():
-                    prompt = asyncio.create_task(session.prompt_async(f"{name}> "))
+                    label = FormattedText([*user_label(name, fingerprint(client.identity.sign_key)), ("", " ")])
+                    prompt = asyncio.create_task(session.prompt_async(label))
                     try:
                         done, _ = await asyncio.wait({prompt, closed}, return_when=asyncio.FIRST_COMPLETED)
                         if closed in done:
