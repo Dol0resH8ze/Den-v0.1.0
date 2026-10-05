@@ -1,14 +1,14 @@
-# Security scope of Hush 0.1
+# Security scope of Den 0.1
 
-Hush is an experimental implementation, not an audited anonymity product. Do not
+Den is an experimental implementation, not an audited anonymity product. Do not
 interpret its UI, test results, or Tor routing as a guarantee that everything is
 hidden. This file states what the code attempts to protect and where it stops.
 
 ## Cryptography and trust
 
-Hush uses PyNaCl/libsodium's sealed boxes and Ed25519 signatures, rather than
+Den uses PyNaCl/libsodium's sealed boxes and Ed25519 signatures, rather than
 implementing cipher algorithms. Sealed boxes provide encryption and integrity,
-but do not authenticate the sender on their own. Hush's signed envelopes bind
+but do not authenticate the sender on their own. Den's signed envelopes bind
 the sender, room, membership revision, sequence and recipient data.
 
 This composition is a **new application protocol**, not MLS, Signal Protocol,
@@ -60,7 +60,7 @@ recipient roster; subsequent authorized packets exclude their public key.
   timing, connection activity and the room lifecycle. There is no padding or
   cover traffic. Tor does not eliminate correlation attacks.
 - **Endpoint traces:** terminal scrollback, clipboard, swap, hibernation, crash
-  dumps, screen recording, OS telemetry, backups and malware are outside Hush's
+  dumps, screen recording, OS telemetry, backups and malware are outside Den's
   control. Memory-only state is not a secure-deletion guarantee.
 - **Availability:** any relay operator can drop, delay or reorder traffic, close
   rooms or deny service. Basic capacity/rate/queue bounds are not comprehensive
@@ -69,13 +69,13 @@ recipient roster; subsequent authorized packets exclude their public key.
   inspect every room message. It can admit an unwanted device. Signatures do not
   prove the human behind a username, and there is no deniability guarantee.
 - **No consistent transcript proof:** a malicious sender can construct different
-  recipient plaintexts. Hush does not prove every member saw identical content.
+  recipient plaintexts. Den does not prove every member saw identical content.
 - **No delivery guarantees:** there are no acknowledgements, reconnects, offline
   queues or automatic retries. Stale messages can be dropped during roster changes.
 - **Local mode:** `--local-test` intentionally bypasses Tor, only for numeric
   loopback addresses. It is not an anonymous networking mode or a LAN mode.
 - **External software:** Tor must be installed and correctly configured by the
-  operator. Hush does not authenticate that the local SOCKS process really is Tor.
+  operator. Den does not authenticate that the local SOCKS process really is Tor.
 - **Not yet verified:** real Tor networking and independent Linux device testing
   have not been performed for this build. CI configuration is not a passed CI run.
 

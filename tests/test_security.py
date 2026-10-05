@@ -6,7 +6,7 @@ import unicodedata
 import pytest
 from nacl.public import SealedBox
 
-from hush.crypto import (
+from den.crypto import (
     Identity,
     Invite,
     b64d,
@@ -288,8 +288,8 @@ def test_owner_cannot_relabel_old_message_as_new_revision(room):
 
 
 def test_max_members_and_max_unicode_message_fit_transport_frame():
-    from hush.crypto import MAX_MEMBERS, MAX_MESSAGE_BYTES
-    from hush.transport import MAX_FRAME_BYTES
+    from den.crypto import MAX_MEMBERS, MAX_MESSAGE_BYTES
+    from den.transport import MAX_FRAME_BYTES
 
     identities = [Identity() for _ in range(MAX_MEMBERS)]
     owner, sender, *others = identities

@@ -1,4 +1,10 @@
-# Hush
+# Den
+
+Previously named Hush. After updating, run your virtual environment's
+`python -m pip install -e .` to install the `den` command. The `hush` command is
+retained as an alias. Existing Tor configuration directories (such as `HushTor`)
+and onion addresses do not need to change. New invites start with `den1.`;
+Den also accepts legacy `hush1.` invites.
 
 Private, live text rooms in a terminal. Pick a username, create a room, share a
 secret invite, and approve the devices that can participate. No account, email,
@@ -29,7 +35,7 @@ test mode makes it possible to try the app on one computer without Tor.
   released, including when a sender has an outdated roster.
 - Uses Tor SOCKS5 with remote hostname resolution. Normal mode accepts only
   valid v3 onion addresses and has **no direct-network fallback**.
-- Keeps rooms and identities in memory. Hush writes no chat history, user
+- Keeps rooms and identities in memory. Den writes no chat history, user
   database, message logs, or invite files.
 - Closes the entire room when its owner disconnects. There is no reconnection,
   offline inbox, history recovery, file transfer, audio, or video in version 0.1.
@@ -40,7 +46,7 @@ The local virtual environment and dependencies have already been installed.
 Open Windows Terminal / PowerShell in this project directory and run:
 
 ```powershell
-.\.venv\Scripts\hush.exe demo
+.\.venv\Scripts\den.exe demo
 ```
 
 The demo starts a temporary loopback relay and three clients using real
@@ -52,16 +58,16 @@ tab, with the project directory as its working directory:
 
 ```powershell
 # Tab 1: relay
-.\.venv\Scripts\hush.exe relay
+.\.venv\Scripts\den.exe relay
 
 # Tab 2: room owner
-.\.venv\Scripts\hush.exe create --server 127.0.0.1 --local-test --name Alice
+.\.venv\Scripts\den.exe create --server 127.0.0.1 --local-test --name Alice
 
 # Tab 3: another participant; paste the invite at the hidden prompt
-.\.venv\Scripts\hush.exe join --local-test --name Bob
+.\.venv\Scripts\den.exe join --local-test --name Bob
 
 # Tab 4: third participant
-.\.venv\Scripts\hush.exe join --local-test --name Cara
+.\.venv\Scripts\den.exe join --local-test --name Cara
 ```
 
 In Alice's tab, type `/approve Bob` and `/approve Cara` after their requests
@@ -79,7 +85,7 @@ Windows PowerShell:
 ```powershell
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
-.\.venv\Scripts\hush.exe --help
+.\.venv\Scripts\den.exe --help
 ```
 
 Linux:
@@ -87,18 +93,18 @@ Linux:
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -e .
-.venv/bin/hush --help
+.venv/bin/den --help
 ```
 
-You can activate the environment to use the short command `hush`. Otherwise use
-the full executable path above. The equivalent `python -m hush` also works when
+You can activate the environment to use the short command `den`. Otherwise use
+the full executable path above. The equivalent `python -m den` also works when
 using this environment's Python.
 
 ## Connect Windows and Linux over Tor
 
 One computer runs the relay, and each participant runs Tor locally. The relay
 can be on the owner's computer or a separate machine. It must remain running
-throughout the session. Hush does not bundle, download, start, or configure Tor,
+throughout the session. Den does not bundle, download, start, or configure Tor,
 and no shared public relay is supplied.
 
 1. Install and configure Tor using the
@@ -106,7 +112,7 @@ and no shared public relay is supplied.
    The [official Tor downloads](https://download.torproject.org/tor/) include
    expert bundles for Windows and Linux. Verify downloads according to Tor's
    instructions.
-2. On the relay machine, run `hush relay --port 8765`. It binds only to
+2. On the relay machine, run `den relay --port 8765`. It binds only to
    `127.0.0.1`, so it is not exposed to the LAN or public internet.
 3. Configure a Tor onion service to forward virtual port 8765 to
    `127.0.0.1:8765`. See [examples/torrc.relay.example](examples/torrc.relay.example)
@@ -119,13 +125,13 @@ and no shared public relay is supplied.
 5. The owner creates a room, then shares the full invite privately:
 
 ```text
-hush create --server YOUR_REAL_V3_ADDRESS.onion --name Alice
+den create --server YOUR_REAL_V3_ADDRESS.onion --name Alice
 ```
 
 Other participants run:
 
 ```text
-hush join --name Bob
+den join --name Bob
 ```
 
 They paste the invite at the hidden prompt and wait for approval. If their Tor
@@ -175,7 +181,7 @@ if a membership-change notice appears.
 | Approved room participants | Usernames, device fingerprints, membership and chat text |
 | Room owner | The above, plus pending usernames and admission requests |
 | Relay operator | Random room IDs, public device keys, room membership, connection timing, traffic sizes and encrypted payloads |
-| Relay over normal Tor connections | Tor-side connections; no participant IP field is sent by Hush |
+| Relay over normal Tor connections | Tor-side connections; no participant IP field is sent by Den |
 | Someone with an invite | Relay onion address, room ID, admission secret, owner public keys; ability to request entry |
 
 The invite is **encoded, not encrypted**. Treat it as a secret. Any admitted
@@ -185,7 +191,7 @@ perfect anonymity, and traffic correlation remains possible.
 
 No app history does not mean no traces: terminal scrollback, clipboard tools,
 screen recording, OS swap, crash dumps and compromised endpoints may retain
-content. Session keys are not written by Hush, but Python does not guarantee
+content. Session keys are not written by Den, but Python does not guarantee
 secure memory erasure. The current protocol has no forward secrecy or
 post-compromise recovery: stolen recipient keys can decrypt previously captured
 ciphertext for that session. The owner is a trusted participant and controls
@@ -199,7 +205,7 @@ outside this synced folder; the supplied configuration is only an example.
 ```text
 python -m pip install -e ".[dev]"
 python -m pytest -q
-python -m hush demo
+python -m den demo
 ```
 
 Use the virtual environment's Python. Tests cover a real loopback relay with

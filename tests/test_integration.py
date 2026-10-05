@@ -12,9 +12,9 @@ import json
 import pytest
 import pytest_asyncio
 
-from hush.client import RoomClient
-from hush.crypto import Identity, b64e, fingerprint, encrypt_message, make_submit, open_release
-from hush.relay import Relay
+from den.client import RoomClient
+from den.crypto import Identity, b64e, fingerprint, encrypt_message, make_submit, open_release
+from den.relay import Relay
 
 
 async def eventually(predicate, message="state did not settle"):

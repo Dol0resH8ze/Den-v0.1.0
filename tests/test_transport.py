@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from hush import transport
+from den import transport
 
 
 def onion_address(public_key: bytes = bytes(range(32)), version: bytes = b"\x03") -> str:
@@ -74,7 +74,7 @@ async def test_proxy_failure_never_opens_direct_connection(monkeypatch):
     direct_open.assert_not_called()
     assert factory.call_args.kwargs["rdns"] is True
     assert factory.call_args.kwargs["proxy_type"] == transport.ProxyType.SOCKS5
-    proxy.connect.assert_awaited_once_with(dest_host=onion_address(), dest_port=8080, timeout=30.0)
+    proxy.connect.assert_awaited_once_with(dest_host=onion_address(), dest_port=8080, timeout=transport.CONNECT_TIMEOUT)
 
 
 @pytest.mark.asyncio

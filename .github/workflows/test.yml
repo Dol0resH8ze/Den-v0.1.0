@@ -14,4 +14,4 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest -q
-      - run: python -m hush demo
+      - run: python -m den demo

@@ -1,19 +1,19 @@
-# Hush v0.1 protocol and implementation
+# Den v0.1 protocol and implementation
 
 This is an implementation note, not a security proof or interoperability standard.
 
 ## Components
 
-- `hush/cli.py`: interactive commands and terminal UI; hidden invite prompt.
-- `hush/client.py`: room session state, approval, rosters and encrypted messages.
-- `hush/crypto.py`: libsodium envelopes, invites and verification.
-- `hush/transport.py`: Tor SOCKS5, endpoint validation and bounded JSON frames.
-- `hush/relay.py`: loopback TCP relay with memory-only rooms and bounded queues.
-- `hush/demo.py`: three-client demonstration of the real protocol over loopback.
+- `den/cli.py`: interactive commands and terminal UI; hidden invite prompt.
+- `den/client.py`: room session state, approval, rosters and encrypted messages.
+- `den/crypto.py`: libsodium envelopes, invites and verification.
+- `den/transport.py`: Tor SOCKS5, endpoint validation and bounded JSON frames.
+- `den/relay.py`: loopback TCP relay with memory-only rooms and bounded queues.
+- `den/demo.py`: three-client demonstration of the real protocol over loopback.
 
 The owner is a client participant, distinct from the relay process even when
 they run on the same computer. Production client connections flow through a local
-Tor SOCKS proxy to the relay's onion service. Hush never performs onion DNS lookups
+Tor SOCKS proxy to the relay's onion service. Den never performs onion DNS lookups
 itself. Tor forwards incoming connections to the relay's loopback listener.
 
 ## Framing and keys
@@ -43,7 +43,9 @@ no whitespace, ASCII escaping, and finite numeric values only.
 8. The owner checks the signature, keys, name uniqueness and secret, then asks
    the user to approve. Pending devices cannot decrypt room names or chat.
 
-The invite starts with `hush1.` followed by Base64-encoded JSON. It is a secret
+New invites start with `den1.` followed by Base64-encoded JSON; the parser also
+accepts legacy `hush1.` invites. The signature domain remains `HUSH/1` for wire
+compatibility with the original protocol. The invite is a secret
 capability, not an encrypted document. The CLI never accepts it as a positional
 argument, and rejects joining from non-interactive standard input.
 

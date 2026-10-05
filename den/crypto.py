@@ -148,15 +148,15 @@ class Invite:
                    identity.sign_key, identity.box_key)
 
     def encode(self):
-        return "hush1." + b64e(canonical(self.__dict__))
+        return "den1." + b64e(canonical(self.__dict__))
 
     @classmethod
     def parse(cls, value, *, local_test=False):
         from .transport import validate_endpoint
-        if not isinstance(value, str) or not value.startswith("hush1.") or len(value) > 2048:
-            raise ValueError("Invalid Hush invite.")
+        if not isinstance(value, str) or not value.startswith(("den1.", "hush1.")) or len(value) > 2048:
+            raise ValueError("Invalid Den invite.")
         try:
-            data = _json_object(b64d(value[6:]))
+            data = _json_object(b64d(value.split(".", 1)[1]))
             result = cls(**data)
             if not isinstance(result.room, str) or not re.fullmatch(r"[0-9a-f]{64}", result.room):
                 raise ValueError("Invalid room.")

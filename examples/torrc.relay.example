@@ -8,5 +8,5 @@ HiddenServicePort 8765 127.0.0.1:8765
 # Windows: use a private directory under your local profile instead, e.g.
 # HiddenServiceDir C:/Users/YOUR_USER/AppData/Local/HushTor/onion/
 # Read the hostname file that Tor creates there to obtain the .onion address.
-# Start Hush with: hush relay --port 8765
+# Start Den with: den relay --port 8765
 

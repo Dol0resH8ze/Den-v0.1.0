@@ -11,7 +11,7 @@ import sys
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText, to_plain_text
 from prompt_toolkit.patch_stdout import patch_stdout
-from python_socks import ProxyError
+from python_socks import ProxyError, ProxyConnectionError
 
 from . import __version__
 from .client import RoomClient
@@ -53,8 +53,8 @@ def print_message(name, code, text):
 
 
 def parser():
-    p = argparse.ArgumentParser(prog="hush", description="Hush — experimental private terminal rooms.")
-    p.add_argument("--version", action="version", version=f"Hush {__version__}")
+    p = argparse.ArgumentParser(prog="den", description="Den — experimental private terminal rooms.")
+    p.add_argument("--version", action="version", version=f"Den {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("demo", help="Run a local three-client demonstration (no Tor anonymity)")
     relay = sub.add_parser("relay", help="Run a memory-only relay bound to loopback")
@@ -140,12 +140,13 @@ async def command(client, line):
 
 
 async def chat(args, name, invite=None):
-    print("HUSH  /  live private rooms")
+    print("DEN  /  live private rooms")
     print("Experimental protocol; not independently audited. No saved chat history.")
     if args.local_test:
         print("LOCAL TEST MODE: direct loopback traffic; Tor anonymity is DISABLED.")
     else:
         print("Tor-only connection. No direct-network fallback.")
+        print("Onion connection setup may take up to two minutes.")
     print("Connecting…")
     network = {"proxy_port": args.proxy_port, "local_test": args.local_test}
     client = (await RoomClient.create(name, args.server, args.port, **network)
@@ -191,7 +192,7 @@ async def chat(args, name, invite=None):
                 await asyncio.gather(closed, printer, return_exceptions=True)
     finally:
         await client.close()
-    print("Left room. Hush did not save the conversation; terminal scrollback may still contain it.")
+    print("Left room. Den did not save the conversation; terminal scrollback may still contain it.")
 
 
 def main():
@@ -211,13 +212,25 @@ def main():
             asyncio.run(chat(args, name, invite))
         return 0
     except (KeyboardInterrupt, EOFError):
-        print("\nHush stopped.")
+        print("\nDen stopped.")
         return 0
-    except (OSError, ConnectionError, asyncio.TimeoutError, ProxyError):
+    except ProxyConnectionError:
+        print("Cannot reach the local Tor SOCKS proxy. Start Tor and check --proxy-port. No fallback attempted.", file=sys.stderr)
+        return 1
+    except asyncio.TimeoutError:
+        print("Connection timed out while opening the onion connection or waiting for the relay. "
+              "Keep Tor and the relay running, check Tor's logs, and retry. No fallback attempted.", file=sys.stderr)
+        return 1
+    except ProxyError as exc:
+        code = getattr(exc, "error_code", None)
+        detail = f" (SOCKS code 0x{code:02x})" if type(code) is int and 0 <= code <= 255 else ""
+        print(f"Tor could not establish the onion connection{detail}. Check the onion service and Tor's logs. No fallback attempted.", file=sys.stderr)
+        return 1
+    except (OSError, ConnectionError):
         print("Connection failed. Check the relay address, Tor SOCKS port, and room owner. No fallback attempted.", file=sys.stderr)
         return 1
     except ValueError as exc:
-        print(f"Hush: {exc}", file=sys.stderr)
+        print(f"Den: {exc}", file=sys.stderr)
         return 1
 
 

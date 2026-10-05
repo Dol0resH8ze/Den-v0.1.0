@@ -463,7 +463,7 @@ class Relay:
 async def serve(host: str = "127.0.0.1", port: int = 8765) -> None:
     relay = Relay()
     await relay.start(host, port)
-    print(f"Hush relay listening on {host}:{relay.address[1]} (loopback only).")
+    print(f"Den relay listening on {host}:{relay.address[1]} (loopback only).")
     print("Memory only; no chat or access logs. Connect through a Tor onion service.")
     try:
         assert relay.server is not None

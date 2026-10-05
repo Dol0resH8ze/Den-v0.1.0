@@ -10,9 +10,9 @@ from nacl.public import PrivateKey, SealedBox
 from nacl.signing import SigningKey
 import pytest
 
-from hush import relay as module
-from hush.relay import Relay
-from hush.transport import STREAM_LIMIT, read_frame, write_frame
+from den import relay as module
+from den.relay import Relay
+from den.transport import STREAM_LIMIT, read_frame, write_frame
 
 
 def b64(value):

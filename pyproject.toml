@@ -3,7 +3,7 @@ requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hush-terminal"
+name = "den-terminal"
 version = "0.1.0"
 description = "Experimental private, live terminal rooms over Tor"
 requires-python = ">=3.12"
@@ -13,10 +13,11 @@ dependencies = ["PyNaCl==1.6.2", "python-socks[asyncio]==2.8.1", "prompt-toolkit
 dev = ["pytest==8.4.2", "pytest-asyncio==1.2.0"]
 
 [project.scripts]
-hush = "hush.cli:main"
+den = "den.cli:main"
+hush = "den.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["hush*"]
+include = ["den*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

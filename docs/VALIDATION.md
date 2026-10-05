@@ -1,12 +1,19 @@
 # Validation record
 
-Build: Hush 0.1.0, 4 October 2026.
+Initial build: Hush 0.1.0, 4 October 2026. Renamed to Den on 5 October 2026.
+
+## Rename verification — 5 October 2026
+
+- All 172 tests passed after renaming the Python package and commands to `den`.
+- `python -m den demo` passed the encrypted three-client room flow.
+- Existing Tor directories and signature-domain bytes were preserved. New
+  invites use `den1.`; the parser continues to accept `hush1.` invites.
 
 ## Executed here
 
 - Windows with Python 3.12.6: `python -m pytest -q -p no:cacheprovider` —
   **168 passed**.
-- `hush demo` — passed actual three-client encrypted room flow over loopback,
+- `hush demo` (the original command) — passed actual three-client encrypted room flow over loopback,
   including approval, messages, lock, removal, and owner-triggered closure.
 - Interactive Windows pseudo-terminal sessions: started relay and owner,
   entered a secret invite without echo in a second client, approved that client,
@@ -37,4 +44,4 @@ of anonymity or a substitute for the above work. The current Python installation
 also emits a `Could not find platform independent libraries <prefix>` startup
 warning in this environment; imports, installed commands, and all listed checks
 nevertheless completed successfully. This appears to be a host Python setup
-issue, not a Hush message or privacy diagnostic.
+issue, not a Den message or privacy diagnostic.

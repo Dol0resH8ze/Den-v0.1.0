@@ -23,7 +23,7 @@ async def _chat(client):
 
 
 async def run():
-    print("HUSH LOCAL DEMO — three clients, actual encryption, no Tor anonymity")
+    print("DEN LOCAL DEMO — three clients, actual encryption, no Tor anonymity")
     relay = Relay()
     clients = []
     await relay.start()

@@ -28,6 +28,7 @@ from python_socks.async_.asyncio import Proxy
 MAX_FRAME_BYTES = 524_288  # Includes newline; sealed 16-member fanout needs room.
 STREAM_LIMIT = MAX_FRAME_BYTES
 IO_TIMEOUT = 30.0
+CONNECT_TIMEOUT = 120.0  # Onion circuit setup can exceed an ordinary socket timeout.
 MAX_JSON_DEPTH = 64
 _ONION_PATTERN = re.compile(r"[a-z2-7]{56}\.onion", re.ASCII)
 
@@ -99,8 +100,8 @@ async def open_connection(
     )
     sock = None
     try:
-        async with asyncio.timeout(IO_TIMEOUT):
-            sock = await proxy.connect(dest_host=host, dest_port=port, timeout=IO_TIMEOUT)
+        async with asyncio.timeout(CONNECT_TIMEOUT):
+            sock = await proxy.connect(dest_host=host, dest_port=port, timeout=CONNECT_TIMEOUT)
             streams = await asyncio.open_connection(sock=sock, limit=STREAM_LIMIT)
             sock = None  # Ownership transferred to StreamWriter's transport.
             return streams
