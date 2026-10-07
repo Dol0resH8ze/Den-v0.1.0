@@ -74,8 +74,17 @@ recipient roster; subsequent authorized packets exclude their public key.
   queues or automatic retries. Stale messages can be dropped during roster changes.
 - **Local mode:** `--local-test` intentionally bypasses Tor, only for numeric
   loopback addresses. It is not an anonymous networking mode or a LAN mode.
-- **External software:** Tor must be installed and correctly configured by the
-  operator. Den does not authenticate that the local SOCKS process really is Tor.
+- **External software:** Tor must be installed from a trusted source. In normal
+  mode Den starts the installed binary with an isolated temporary configuration;
+  it does not authenticate that an executable named Tor is genuine. Explicit
+  `--external-tor` / `--proxy-port` mode trusts the operator's local SOCKS process
+  and configuration. There is no direct-network fallback.
+- **Managed Tor state:** Tor writes temporary runtime data and onion keys outside
+  the project. Normal shutdown attempts to remove only that session's data and
+  terminates only its owned process. Forced termination, crashes, OS/file locks,
+  or power loss can leave runtime files behind; deletion is not secure erasure.
+  Automatic hosting uses a fresh onion address each time. Existing manually
+  configured services and their persistent keys are not changed.
 - **Not yet verified:** real Tor networking and independent Linux device testing
   have not been performed for this build. CI configuration is not a passed CI run.
 

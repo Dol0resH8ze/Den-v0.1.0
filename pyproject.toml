@@ -1,16 +1,39 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "den-terminal"
-version = "0.1.0"
+version = "0.2.0"
 description = "Experimental private, live terminal rooms over Tor"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Dol0resH8ze"}]
+keywords = ["terminal", "chat", "tor", "messaging"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: Chat",
+]
 requires-python = ">=3.12"
 dependencies = ["PyNaCl==1.6.2", "python-socks[asyncio]==2.8.1", "prompt-toolkit==3.0.52"]
 
+[project.urls]
+Homepage = "https://github.com/Dol0resH8ze/hush"
+Repository = "https://github.com/Dol0resH8ze/hush"
+Issues = "https://github.com/Dol0resH8ze/hush/issues"
+Security = "https://github.com/Dol0resH8ze/hush/blob/main/SECURITY.md"
+
 [project.optional-dependencies]
 dev = ["pytest==8.4.2", "pytest-asyncio==1.2.0"]
+release = ["build>=1.2", "twine>=6"]
 
 [project.scripts]
 den = "den.cli:main"

@@ -4,8 +4,10 @@ import argparse
 import asyncio
 import contextlib
 import colorsys
+import copy
 import getpass
 import hashlib
+from pathlib import Path
 import sys
 
 from prompt_toolkit import PromptSession, print_formatted_text
@@ -15,7 +17,10 @@ from python_socks import ProxyError, ProxyConnectionError
 
 from . import __version__
 from .client import RoomClient
-from .crypto import fingerprint, safe_text, username
+from .crypto import Invite, fingerprint, safe_text, username
+from .relay import Relay
+from .tor import ManagedTor, TorError
+from .transport import validate_endpoint
 
 HELP = """Type a message and press Enter to send.
   /members                Show approved usernames and device fingerprints
@@ -52,6 +57,16 @@ def print_message(name, code, text):
     print_styled(FormattedText([*user_label(name, code), ("", safe_text(text))]))
 
 
+def port_number(value):
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Port must be an integer between 1 and 65535.") from exc
+    if not 1 <= port <= 65535:
+        raise argparse.ArgumentTypeError("Port must be an integer between 1 and 65535.")
+    return port
+
+
 def parser():
     p = argparse.ArgumentParser(prog="den", description="Den — experimental private terminal rooms.")
     p.add_argument("--version", action="version", version=f"Den {__version__}")
@@ -60,13 +75,15 @@ def parser():
     relay = sub.add_parser("relay", help="Run a memory-only relay bound to loopback")
     relay.add_argument("--host", default="127.0.0.1")
     relay.add_argument("--port", type=int, default=8765)
-    create = sub.add_parser("create", help="Create a room on your relay")
-    create.add_argument("--server", required=True, help="Relay v3 .onion hostname (no scheme)")
-    create.add_argument("--port", type=int, default=8765)
+    create = sub.add_parser("create", help="Start a private Tor relay and create a room")
+    create.add_argument("--server", help="Use an existing relay's v3 .onion hostname (no scheme)")
+    create.add_argument("--port", type=port_number, default=8765, help="Existing relay destination port (default 8765)")
     join = sub.add_parser("join", help="Join using a secret invite entered privately at the prompt")
     for command in (create, join):
         command.add_argument("--name", help="Display name; prompted if omitted")
-        command.add_argument("--proxy-port", type=int, default=9050, help="Local Tor SOCKS port (default 9050)")
+        command.add_argument("--tor-exe", type=Path, help="Installed Tor executable; Den starts and stops its own process")
+        command.add_argument("--external-tor", action="store_true", help="Use an already running Tor SOCKS proxy (default port 9050)")
+        command.add_argument("--proxy-port", type=port_number, help="Use an already running Tor proxy at this local port (implies --external-tor)")
         command.add_argument("--local-test", action="store_true", help="Development only: permit direct connections to numeric loopback")
     return p
 
@@ -140,6 +157,26 @@ async def command(client, line):
 
 
 async def chat(args, name, invite=None):
+    # Validate all destinations and mode combinations before opening a listener
+    # or starting Tor. In particular, do not launch Tor for a malformed invite.
+    args = copy.copy(args)
+    external = args.external_tor or args.proxy_port is not None
+    if args.local_test and (args.tor_exe is not None or external):
+        raise ValueError("--local-test cannot be combined with Tor options.")
+    if args.tor_exe is not None and external:
+        raise ValueError("--tor-exe cannot be combined with --external-tor or --proxy-port.")
+    if args.command == "create":
+        if args.server is not None:
+            validate_endpoint(args.server, args.port, local_test=args.local_test)
+        elif args.local_test:
+            raise ValueError("--local-test requires --server with a numeric loopback address.")
+        elif external:
+            raise ValueError("Creating with external Tor requires --server with an existing onion relay.")
+        elif args.port != 8765:
+            raise ValueError("Automatic hosting uses onion port 8765; --port requires --server.")
+    else:
+        Invite.parse(invite, local_test=args.local_test)
+
     print("DEN  /  live private rooms")
     print("Experimental protocol; not independently audited. No saved chat history.")
     if args.local_test:
@@ -147,6 +184,41 @@ async def chat(args, name, invite=None):
     else:
         print("Tor-only connection. No direct-network fallback.")
         print("Onion connection setup may take up to two minutes.")
+    if args.local_test or external:
+        args.proxy_port = args.proxy_port or 9050
+        await _chat_session(args, name, invite)
+        return
+
+    relay = None
+    try:
+        if args.command == "create" and args.server is None:
+            relay = Relay()
+            await relay.start("127.0.0.1", 0)
+            print("Starting your room relay (loopback only)...")
+        async with ManagedTor(
+            executable=args.tor_exe,
+            service_port=relay.address[1] if relay is not None else None,
+            status=print,
+        ) as tor:
+            try:
+                args.proxy_port = tor.socks_port
+                if relay is not None:
+                    args.server = tor.onion_host
+                    # Both the owner and remote participants connect via Tor.
+                    validate_endpoint(args.server, args.port)
+                await _chat_session(args, name, invite)
+            finally:
+                # Close accepted connections before stopping their Tor transport.
+                if relay is not None:
+                    await relay.close()
+                    relay = None
+    finally:
+        # This also covers Tor startup failure or cancellation before entry.
+        if relay is not None:
+            await relay.close()
+
+
+async def _chat_session(args, name, invite=None):
     print("Connecting…")
     network = {"proxy_port": args.proxy_port, "local_test": args.local_test}
     client = (await RoomClient.create(name, args.server, args.port, **network)
@@ -214,12 +286,17 @@ def main():
     except (KeyboardInterrupt, EOFError):
         print("\nDen stopped.")
         return 0
+    except TorError as exc:
+        print(f"Den: {exc}", file=sys.stderr)
+        return 1
     except ProxyConnectionError:
-        print("Cannot reach the local Tor SOCKS proxy. Start Tor and check --proxy-port. No fallback attempted.", file=sys.stderr)
+        print("Cannot reach the local Tor SOCKS proxy. Retry the command; in external-Tor mode, "
+              "start Tor and check --proxy-port. No fallback attempted.", file=sys.stderr)
         return 1
     except asyncio.TimeoutError:
         print("Connection timed out while opening the onion connection or waiting for the relay. "
-              "Keep Tor and the relay running, check Tor's logs, and retry. No fallback attempted.", file=sys.stderr)
+              "Retry after allowing time for the onion service to become reachable. With an existing "
+              "relay, check that it is online. No fallback attempted.", file=sys.stderr)
         return 1
     except ProxyError as exc:
         code = getattr(exc, "error_code", None)

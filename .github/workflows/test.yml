@@ -15,3 +15,20 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest -q
       - run: python -m den demo
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install build twine
+      - run: python -m build --outdir dist/pypi
+      - run: python -m twine check --strict dist/pypi/*
+      - name: Test installed wheel outside source imports
+        run: |
+          python -m venv "$RUNNER_TEMP/den-wheel-check"
+          "$RUNNER_TEMP/den-wheel-check/bin/python" -I -m pip install dist/pypi/*.whl
+          "$RUNNER_TEMP/den-wheel-check/bin/python" -I -m den --version
+          "$RUNNER_TEMP/den-wheel-check/bin/python" -I -m den demo
+          "$RUNNER_TEMP/den-wheel-check/bin/python" -m pip check

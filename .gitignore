@@ -1,4 +1,8 @@
 .venv/
+.venv-release-check/
+.venv-release-isolated/
+.venv-auto-tor/
+.venv-auto-wheel/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -8,4 +12,3 @@ build/
 dist/
 .tor/
 *.log
-

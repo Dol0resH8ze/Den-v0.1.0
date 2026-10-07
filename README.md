@@ -5,6 +5,9 @@ retained as an alias. Existing Tor configuration directories (such as `HushTor`)
 and onion addresses do not need to change. New invites start with `den1.`;
 Den also accepts legacy `hush1.` invites.
 
+Version 0.2 adds automatic Tor startup and single-command room hosting. Existing
+Tor configurations remain usable through explicit external-Tor mode.
+
 Private, live text rooms in a terminal. Pick a username, create a room, share a
 secret invite, and approve the devices that can participate. No account, email,
 phone number, or password is required.
@@ -50,6 +53,8 @@ For development, use the source installation instructions below.
 
 ## What this version does
 
+- Starts and stops its own Tor process; `den create` can also host the relay and
+  a fresh onion service automatically. Tor must be installed once on each PC.
 - Supports up to **16 devices per room**, including the owner.
 - Generates fresh signing and encryption keys for each room session. Your
   username is a display name, not a globally reserved identity.
@@ -72,7 +77,7 @@ For development, use the source installation instructions below.
 - Keeps rooms and identities in memory. Den writes no chat history, user
   database, message logs, or invite files.
 - Closes the entire room when its owner disconnects. There is no reconnection,
-  offline inbox, history recovery, file transfer, audio, or video in version 0.1.
+  offline inbox, history recovery, file transfer, audio, or video in this version.
 
 ## Try a local room
 
@@ -142,203 +147,136 @@ using this environment's Python.
 
 ## Connect Windows and Linux over Tor
 
-**Either computer can host**, regardless of which one originally installed Den.
-For the simplest setup, the host runs both the relay and the room owner's client.
+**New in 0.2: one terminal per participant.** Den starts and configures Tor
+for you. Creating a room without `--server` also starts a temporary loopback
+relay and a fresh onion service on the owner's computer.
 
-| Computer | Keep running | Tor configuration |
-| --- | --- | --- |
-| Host / owner | Tor, `den relay`, `den create` (three terminals) | SOCKS listener and onion service |
-| Each joining device | Tor, `den join` (two terminals) | SOCKS listener only |
+This behavior requires version 0.2.0 or newer. The earlier 0.1.0 PyPI release
+requires the manual setup. Install this checkout to try the update before it
+is published, or upgrade with `python -m pip install --upgrade den-terminal`
+after publication.
 
-A relay forwards encrypted traffic between clients. Den does not bundle,
-download, start, or configure Tor, and no shared public relay is supplied.
-The relay binds to loopback; no router port forwarding is needed. The computers
-can be on different networks. Do not use `--local-test` between computers.
+### Install Tor once on each PC
 
-### Windows: install Tor on each PC once
+Tor is still a separate prerequisite; pip does not install it. You do not need
+to prepare a `torrc`, start a separate Tor terminal, or look up a hostname file
+for automatic mode.
 
-If Tor is already configured and working, reuse it and skip the installation.
-Do not overwrite an existing `torrc` or start a second Tor on the same SOCKS port.
+- **Windows:** download and verify the appropriate Expert Bundle from the
+  [Tor Project](https://www.torproject.org/download/tor/), then extract the entire
+  bundle, keeping its DLLs beside `tor.exe`. Den checks `PATH` and existing
+  bundles beneath `%LOCALAPPDATA%\DenTor\bundle`,
+  `%LOCALAPPDATA%\HushTor\bundle`, and `%LOCALAPPDATA%\DenDropTor\bundle`.
+- **Linux:** install the `tor` executable using the
+  [Tor Project's distribution instructions](https://support.torproject.org/little-t-tor/).
+  Den discovers it on `PATH`.
+- If discovery does not find your installation, pass `--tor-exe` followed by
+  the full path to the executable on that PC.
 
-1. Download a stable Windows Expert Bundle matching your architecture from the
-   [official Tor downloads](https://download.torproject.org/tor/). Follow the
-   [Tor installation guidance](https://support.torproject.org/little-t-tor/)
-   to verify it. These steps use the Expert Bundle, not Tor Browser.
-2. Save the archive in Downloads as `hush-tor.tar.gz`.
-3. In PowerShell, extract it and create a client configuration. These paths
-   automatically use the current Windows account:
+Den launches an isolated Tor instance with a dynamically selected loopback
+SOCKS port and a private temporary data directory. Existing Tor processes,
+configuration, and onion keys are left alone. A missing or failed Tor instance
+never causes a direct-network connection.
 
-```powershell
-$torRoot = "$env:LOCALAPPDATA\HushTor"
-New-Item -ItemType Directory -Force "$torRoot\bundle" | Out-Null
-tar.exe -xf "$env:USERPROFILE\Downloads\hush-tor.tar.gz" -C "$torRoot\bundle"
-$torConfigRoot = $torRoot.Replace('\', '/')
-if (-not (Test-Path "$torRoot\torrc")) {
-    @"
-DataDirectory "$torConfigRoot/data"
-SocksPort 127.0.0.1:9050
-SafeSocks 1
-Log notice stdout
-"@ | Set-Content "$torRoot\torrc" -Encoding ascii
-}
+### Host a room on either PC
+
+In an activated environment, run:
+
+```text
+den create --name Alice
 ```
 
-The `HushTor` directory name is retained for compatibility with earlier setup
-instructions; it works with Den. Installing the Python package does not create it.
-
-### Windows: enable hosting on the chosen PC
-
-Only the host needs this step. If Tor is running in a terminal, stop it with
-Ctrl+C before editing its configuration. Open the file:
+Without activation, from the Windows project folder:
 
 ```powershell
-$torRoot = "$env:LOCALAPPDATA\HushTor"
-$torConfigRoot = $torRoot.Replace('\', '/')
-Write-Output "HiddenServiceDir `"$torConfigRoot/onion`""
-Write-Output 'HiddenServicePort 8765 127.0.0.1:8765'
-notepad "$torRoot\torrc"
+.\.venv\Scripts\den.exe create --name Alice
 ```
 
-Copy the **two lines printed by PowerShell** into the end of that file and save
-it. Keep the existing settings. Add these lines only once; if this onion service
-is already configured, reuse it. This also converts a previously joining PC
-into a host. See the [onion service guide](https://community.torproject.org/onion-services/setup/)
-for how Tor creates the service's keys and `hostname` file.
+Wait for the Tor bootstrap progress and room creation. Share the full `den1.`
+invite privately and keep this terminal open. No separate `den relay`, router
+port forwarding, or public server is needed.
 
-### Windows: start the host
+### Join on another PC
 
-**Terminal 1 — Tor:**
-
-```powershell
-$torRoot = "$env:LOCALAPPDATA\HushTor"
-$torExe = Get-ChildItem "$torRoot\bundle" -Filter tor.exe -Recurse |
-    Select-Object -First 1 -ExpandProperty FullName
-if (-not $torExe) { throw 'Tor was not found. Extract the Expert Bundle first.' }
-& $torExe -f "$torRoot\torrc"
-```
-
-Wait for `Bootstrapped 100% (done): Done` and keep this terminal open.
-That means Tor connected; the onion service may still need time to become
-reachable. Use `Log notice stdout` as above to avoid verbose debug output.
-
-**Terminal 2 — relay:** activate your Den environment, then run:
-
-```powershell
-den relay --port 8765
-```
-
-Keep this terminal open too.
-
-**Terminal 3 — room owner:** activate your Den environment, then run:
-
-```powershell
-$hostnameFile = "$env:LOCALAPPDATA\HushTor\onion\hostname"
-if (-not (Test-Path $hostnameFile)) {
-    throw 'No hostname yet. Check the host torrc and restart Tor with that file.'
-}
-$onionAddress = (Get-Content $hostnameFile -Raw).Trim()
-den create --server $onionAddress --name Alice
-```
-
-Replace `Alice` with your display name. Share the entire `den1.` invite privately
-with the people joining. Keep the owner client running: closing it ends the room.
-
-### Windows: join from another PC
-
-Install Den and set up Tor on that PC using the steps above. A joining PC does
-not need `HiddenServiceDir`, a `hostname` file, or its own relay.
-
-In terminal 1, run the same Tor startup block shown above and wait for 100%.
-In terminal 2, activate your Den environment and run:
-
-```powershell
+```text
 den join --name Bob
 ```
 
-Paste the owner's full invite at the hidden prompt and press Enter. The invite
-will not appear while you paste it. On the **owner's** terminal, after the request
-arrives, type:
+Paste the invite at the hidden prompt. Den starts its own Tor client and sends
+the admission request. On Alice's terminal, type `/approve Bob` after checking
+the participant's session fingerprint. Repeat for additional participants.
 
-```text
-/approve Bob
+The PCs can be on different networks. Do not add `--local-test` for cross-device
+connections. Use distinct usernames within the room.
+
+If Tor's path must be specified, use it on either command, for example:
+
+```powershell
+den create --name Alice --tor-exe "C:\Tools\tor\tor.exe"
+den join --name Bob --tor-exe "C:\Tools\tor\tor.exe"
 ```
 
-Repeat for each device with a different username. If the other PC is the host,
-run all three host terminals there and just Tor plus `den join` on your PC.
+These are alternative commands for the owner and joining PC, respectively.
 
-### Linux participants and hosts
+### Ending and starting again
 
-Install Tor using the [Tor Project's installation guidance](https://support.torproject.org/little-t-tor/)
-for your distribution. Configure its active `torrc` with a local SOCKS listener:
+Use `/quit` or Ctrl+C. Den stops the Tor process it started and attempts to
+remove its temporary configuration, data and onion keys. Owner departure closes
+both the room and its automatic relay; other clients leave when the room closes.
+Den does not stop a Tor process or relay that you started separately.
 
-```text
-SocksPort 127.0.0.1:9050
-SafeSocks 1
-```
+A new automatic hosting session gets a new onion address, room and invite.
+Start with `den create` again and share the new invite. Normal cleanup is not
+secure erasure; a crash, forced kill, power loss or file-lock error can leave
+Tor runtime files behind. Den's own chat history remains unsaved.
 
-If Linux is hosting the relay, also add the following, using a private directory
-writable by the account running Tor. `/var/lib/tor/den/` is an example for a
-system Tor service; consult your distribution's permissions and service setup.
+### Existing relays and manually managed Tor
 
-```text
-HiddenServiceDir /var/lib/tor/den/
-HiddenServicePort 8765 127.0.0.1:8765
-```
+Your earlier setup remains available:
 
-Restart Tor with the edited configuration and check its log for successful
-bootstrap. A service-managed Tor can run in the background. On a Linux host,
-run `den relay` in one terminal, read the onion address from the service's
-`hostname` file with the required permissions, then run in another terminal:
+| Command | Behavior |
+| --- | --- |
+| `den create --name Alice` | Start a local relay, Tor, and fresh onion service |
+| `den create --server ADDRESS.onion --name Alice` | Start only a Tor client and connect to that existing relay |
+| `den join --name Bob` | Start a Tor client and join the invite's relay |
+| `den create --server ADDRESS.onion --external-tor --name Alice` | Use an already-running Tor SOCKS proxy on port 9050 |
+| `den join --external-tor --name Bob` | Join through an already-running Tor SOCKS proxy on port 9050 |
+| `den join --proxy-port 9150 --name Bob` | Explicit proxy port also selects externally managed Tor |
+| `den relay` | Run the separate loopback relay, as before |
 
-```bash
-den create --server YOUR_REAL_V3_ADDRESS.onion --name Alice
-```
+Use a real v3 onion address in place of `ADDRESS.onion`. An externally managed
+Tor client requires an existing relay for `create`; supply `--server`. An
+explicit `--proxy-port` preserves the earlier manually managed behavior.
+`--tor-exe` cannot be combined with `--external-tor`, `--proxy-port`, or
+`--local-test`. Automatic hosting uses onion port 8765; `create --port` selects
+a destination port only when connecting to an existing server.
 
-Replace the placeholder with the actual address, with no `http://` prefix.
-A Linux participant joining either a Windows or Linux host runs:
-
-```bash
-den join --name Bob
-```
-
-Paste the invite and wait for the owner to approve you. See the supplied
-[relay](https://github.com/Dol0resH8ze/hush/blob/main/examples/torrc.relay.example)
+See [manual Tor setup](https://github.com/Dol0resH8ze/hush/blob/main/docs/MANUAL-TOR.md)
+for the earlier multi-terminal workflow, persistent onion addresses, and custom
+Tor configurations such as bridges. The current automatic mode does not configure
+bridges. The supplied [relay](https://github.com/Dol0resH8ze/hush/blob/main/examples/torrc.relay.example)
 and [client](https://github.com/Dol0resH8ze/hush/blob/main/examples/torrc.client.example)
-configuration examples. If Tor uses another SOCKS port, add `--proxy-port PORT`
-to `den create` or `den join` on that computer.
-
-### Starting again another day
-
-Reuse the installed packages and Tor configuration. Start Tor on each computer,
-then the host's relay and owner client. Share the **new** invite, join, and approve
-each participant again. The onion address persists while the host's Tor service
-keys remain intact, but rooms, invites, device fingerprints, and chat history do
-not survive the room closing. Do not copy a `.venv` or Tor private keys to move
-hosting to another computer; set up that computer with its own onion service.
-
-Initial manual cross-device use has been reported successful. Automated transport
-checks use a local SOCKS5 server with DNS lookups disabled. Neither local tests
-nor a successful connection establish a guarantee of anonymity.
+configuration examples remain available.
 
 ## Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
-| `den` is not recognized | Activate the environment where Den was installed, or use its full executable path. Install Den separately on every PC. |
-| `.\.venv\Scripts\hush.exe` is not recognized | That relative path only works in the folder containing that environment. Use the installed `den` command or the correct full path. |
-| `HushTor` or `bundle` does not exist | Download and extract Tor on that PC. `pip install` installs Den only. |
-| `onion\hostname` does not exist | Hosting requires both hidden-service lines in the configuration Tor actually loads. Restart Tor with `-f` pointing to that file and check its errors. Joining alone does not create this file. Do not create it manually. |
-| Lots of Tor output, no visible bootstrap percentage | Set `Log notice stdout`, restart with that configuration, and inspect the startup log. Look for bootstrap completion and any errors. |
-| Connection failed even after Tor reached 100% | Keep the relay running, check the onion address and port mapping, and allow time for the onion service to become reachable. Bootstrap alone does not prove the relay is reachable. |
-| SOCKS connection refused | Check that Tor is running and listening on the port Den uses (9050 by default). Set `--proxy-port` if it differs. |
-| Address/port already in use | Reuse the existing Tor or relay process, or stop your duplicate process before starting another. |
-| Join is waiting | The owner must remain connected and approve the pending request. Check `/pending` and whether the room is locked. |
-| An old invite no longer works | Ask the owner for the current room's invite. Closed rooms cannot be restored. |
-| `Could not find platform independent libraries <prefix>` | This is a Python runtime warning. If commands fail, repair the Python installation and recreate the virtual environment; it does not by itself diagnose a Tor failure. |
+| `den` is not recognized | Install Den on that PC and activate its environment, or use the full executable path. |
+| `create` still requires `--server` | You are running the older release. Install this checkout or upgrade after version 0.2.0 is published. |
+| `Tor was not found` | Install/extract Tor once, or pass `--tor-exe` with its actual executable path. |
+| Tor could not start | Keep its bundle files/DLLs together; check that the binary matches your OS and architecture. |
+| Tor bootstrap times out | Check internet access and whether the network blocks Tor. Automatic startup waits up to three minutes; use external Tor if you need bridges/custom configuration. |
+| Tor reached 100%, but connection failed | A new onion service may still be propagating. For an existing relay, check that it remains online and its port mapping is correct. No direct fallback is attempted. |
+| SOCKS connection refused in external mode | Start your own Tor and check `--proxy-port` (9050 by default). |
+| `HushTor` or `onion/hostname` is missing | Automatic mode requires only the installed executable; it manages runtime paths itself. Those fixed files are relevant only to the manual setup guide. |
+| Join is waiting | The owner must stay connected and approve the pending request; check `/pending` and whether the room is locked. |
+| An old invite no longer works | Ask for the current room's invite. Closed rooms cannot be restored. |
+| `Could not find platform independent libraries <prefix>` | This is a Python runtime issue. If commands fail, repair Python and recreate the virtual environment. |
 
-Onion connection setup can take up to 120 seconds before Den times out. Normal
-mode never retries over a direct internet connection. Keep invites and Tor
-private keys out of bug reports.
+Onion connection setup can take up to two minutes after Tor bootstrap. Keep
+invites and Tor private keys out of bug reports. A successful connection is not
+a guarantee of anonymity.
 
 ## Commands inside a room
 

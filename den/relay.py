@@ -446,7 +446,8 @@ class Relay:
         self._stopping = True
         if self.server is not None:
             self.server.close()
-            await self.server.wait_closed()
+        # Python 3.12+ waits for accepted transports too. Signal sessions before
+        # waiting, otherwise an idle connected peer can prevent shutdown forever.
         for session in tuple(self._sessions):
             session.finish({"type": "closed", "reason": "Relay stopped."})
         tasks = tuple(self._tasks)
@@ -456,6 +457,8 @@ class Relay:
                 task.cancel()
             if pending:
                 await asyncio.gather(*pending, return_exceptions=True)
+        if self.server is not None:
+            await self.server.wait_closed()
         self.rooms.clear()
         self.server = None
 
